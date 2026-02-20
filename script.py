@@ -123,8 +123,8 @@ if __name__ == '__main__':
     print("Advice on how to rebalance the asset portfolio:")
     for asset, current_amount in stock_values.items():
         target_amount = asset_values[asset]
-        amount = (target_amount - current_amount) / current_stock_prices[asset]['amount'] * exchange_rate[
-            current_stock_prices[asset]['currency']]
+        amount = (target_amount - current_amount) / (current_stock_prices[asset]['amount'] * exchange_rate[
+            current_stock_prices[asset]['currency']])
         if current_amount < target_amount:
             print(f"Buy {asset} x {amount:.2f} for {(target_amount - current_amount) / 100:.2f} USD")
         elif current_amount > target_amount:

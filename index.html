@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portfolio Rebalancer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0c10;
+    --surface: #12151c;
+    --surface-2: #1a1e28;
+    --surface-3: #222735;
+    --border: #2a3040;
+    --border-focus: #4a8cff;
+    --text: #e4e8f0;
+    --text-dim: #8892a6;
+    --text-muted: #5a6478;
+    --accent: #4a8cff;
+    --accent-dim: rgba(74, 140, 255, 0.12);
+    --green: #34d399;
+    --green-dim: rgba(52, 211, 153, 0.12);
+    --red: #f87171;
+    --red-dim: rgba(248, 113, 113, 0.12);
+    --amber: #fbbf24;
+    --amber-dim: rgba(251, 191, 36, 0.12);
+    --font-body: 'DM Sans', -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+    --radius: 8px;
+  }
+
+  html { font-size: 15px; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Subtle grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(74, 140, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(74, 140, 255, 0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
+  }
+
+  /* Header */
+  header {
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  header h1 {
+    font-family: var(--font-mono);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  header h1 span {
+    color: var(--accent);
+  }
+
+  header p {
+    margin-top: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  /* Sections */
+  .section {
+    margin-bottom: 2rem;
+  }
+
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Grid layouts */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1.25rem;
+  }
+
+  @media (max-width: 720px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.87rem;
+  }
+
+  thead th {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.7rem 0.85rem;
+    text-align: left;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  thead th:not(:first-child) {
+    text-align: right;
+  }
+
+  tbody td {
+    padding: 0 0.85rem;
+    border-bottom: 1px solid var(--border);
+    height: 44px;
+    vertical-align: middle;
+  }
+
+  tbody td:not(:first-child) {
+    text-align: right;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  /* Ticker badge */
+  .ticker {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+  }
+
+  .currency-badge {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-dim);
+    background: var(--surface-3);
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    display: inline-block;
+  }
+
+  /* Inputs */
+  input[type="number"],
+  input[type="text"],
+  select {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text);
+    background: transparent;
+    border: none;
+    outline: none;
+    width: 100%;
+    padding: 0;
+    text-align: inherit;
+    -moz-appearance: textfield;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+  }
+
+  select {
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  td.editable {
+    position: relative;
+    transition: background 0.15s;
+  }
+
+  td.editable::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0.85rem;
+    right: 0.85rem;
+    height: 1px;
+    background: var(--border);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  td.editable:focus-within {
+    background: var(--accent-dim);
+  }
+
+  td.editable:focus-within::after {
+    background: var(--accent);
+    opacity: 1;
+  }
+
+  /* Mono numbers */
+  .mono {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Big stat */
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+  }
+
+  .stat-label {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.5rem;
+  }
+
+  .stat-value {
+    font-family: var(--font-mono);
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+
+  .stat-value .dollar {
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  /* Rebalance advice */
+  .advice-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem;
+    border-bottom: 1px solid var(--border);
+    gap: 1rem;
+  }
+
+  .advice-row:last-child {
+    border-bottom: none;
+  }
+
+  .advice-action {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.2rem 0.55rem;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  .advice-action.buy {
+    color: var(--green);
+    background: var(--green-dim);
+  }
+
+  .advice-action.sell {
+    color: var(--red);
+    background: var(--red-dim);
+  }
+
+  .advice-action.balanced {
+    color: var(--amber);
+    background: var(--amber-dim);
+  }
+
+  .advice-detail {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    flex: 1;
+    text-align: right;
+  }
+
+  .advice-detail strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* Validation error */
+  .validation-error {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--red);
+    background: var(--red-dim);
+    padding: 0.6rem 0.85rem;
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+    display: none;
+  }
+
+  .validation-error.visible {
+    display: block;
+  }
+
+  /* Percent bar in table */
+  .pct-cell {
+    position: relative;
+  }
+
+  .pct-bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background: var(--accent-dim);
+    border-right: 2px solid var(--accent);
+    transition: width 0.3s ease;
+    pointer-events: none;
+  }
+
+  .pct-text {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Footer */
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  footer a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <h1><span>//</span> Portfolio Rebalancer</h1>
+    <p>Real-time allocation engine &mdash; data stored locally</p>
+  </header>
+
+  <div id="validation" class="validation-error"></div>
+
+  <!-- INPUTS -->
+  <div class="section">
+    <div class="section-label">Assets</div>
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Ticker</th>
+            <th>Split %</th>
+            <th>Price (&#162;)</th>
+            <th>Ccy</th>
+            <th>Holdings</th>
+          </tr>
+        </thead>
+        <tbody id="assets-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="section">
+      <div class="section-label">Exchange Rates</div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Currency</th><th>Rate to USD</th></tr></thead>
+          <tbody id="rates-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-label">Liquidity</div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Currency</th><th>Amount (&#162;)</th></tr></thead>
+          <tbody id="liquidity-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOTAL -->
+  <div class="section">
+    <div class="stat-card">
+      <div class="stat-label">Total Portfolio Value</div>
+      <div class="stat-value"><span class="dollar">$</span><span id="total-value">0.00</span></div>
+    </div>
+  </div>
+
+  <!-- OUTPUTS -->
+  <div class="grid-2">
+    <div class="section">
+      <div class="section-label">Target Allocation</div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Ticker</th><th>Value (USD)</th></tr></thead>
+          <tbody id="target-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-label">Current Stock Values</div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Ticker</th><th>Value (USD)</th></tr></thead>
+          <tbody id="stock-values-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Liquidity Values</div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Currency</th><th>Value (USD)</th></tr></thead>
+        <tbody id="liquidity-values-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="section">
+      <div class="section-label">% of Total Portfolio</div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Ticker</th><th>Weight</th></tr></thead>
+          <tbody id="pct-total-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-label">% of Stock Portfolio</div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Ticker</th><th>Weight</th></tr></thead>
+          <tbody id="pct-stock-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Rebalancing Advice</div>
+    <div class="card" id="advice-card"></div>
+  </div>
+
+  <footer>
+    Data is stored in your browser's localStorage. Nothing leaves your device.
+    <br><a href="https://github.com/d9nchik/portfolio-rebalancer">Source on GitHub</a>
+  </footer>
+</div>
+
+<script>
+  // Default configuration
+  const DEFAULT_ASSETS = [
+    { ticker: 'CSPX', split: 60, price: 74082, currency: 'USD' },
+    { ticker: 'EMIM', split: 20, price: 4064, currency: 'EUR' },
+    { ticker: 'XUSE', split: 20, price: 669, currency: 'USD' },
+  ];
+
+  const DEFAULT_RATES = { USD: 1, EUR: 1.1822 };
+  const CURRENCIES = ['USD', 'EUR'];
+
+  // State
+  let assets = DEFAULT_ASSETS.map(a => ({ ...a }));
+  let rates = { ...DEFAULT_RATES };
+  let stocks = {};
+  let liquidity = {};
+
+  // localStorage
+  function loadState() {
+    try {
+      const s = JSON.parse(localStorage.getItem('stocks'));
+      if (s && typeof s === 'object') stocks = s;
+    } catch {}
+    try {
+      const l = JSON.parse(localStorage.getItem('liquidity'));
+      if (l && typeof l === 'object') liquidity = l;
+    } catch {}
+  }
+
+  function saveState() {
+    localStorage.setItem('stocks', JSON.stringify(stocks));
+    localStorage.setItem('liquidity', JSON.stringify(liquidity));
+  }
+
+  // Formatting
+  function fmt(cents) {
+    return (cents / 100).toFixed(2);
+  }
+
+  function fmtPct(pct) {
+    return pct.toFixed(2) + '%';
+  }
+
+  // Render inputs
+  function renderInputs() {
+    // Assets table
+    const abody = document.getElementById('assets-body');
+    abody.innerHTML = assets.map((a, i) => `
+      <tr>
+        <td><span class="ticker">${a.ticker}</span></td>
+        <td class="editable">
+          <input type="number" data-field="split" data-idx="${i}" value="${a.split}" step="1" min="0" max="100">
+        </td>
+        <td class="editable">
+          <input type="number" data-field="price" data-idx="${i}" value="${a.price}" step="1" min="0">
+        </td>
+        <td>
+          <span class="currency-badge">${a.currency}</span>
+        </td>
+        <td class="editable">
+          <input type="number" data-field="holdings" data-idx="${i}" value="${stocks[a.ticker] || 0}" step="1" min="0">
+        </td>
+      </tr>
+    `).join('');
+
+    // Rates table
+    const rbody = document.getElementById('rates-body');
+    rbody.innerHTML = CURRENCIES.map(c => `
+      <tr>
+        <td><span class="currency-badge">${c}</span></td>
+        <td class="editable">
+          <input type="number" data-field="rate" data-currency="${c}" value="${rates[c]}" step="0.0001" min="0">
+        </td>
+      </tr>
+    `).join('');
+
+    // Liquidity table
+    const lbody = document.getElementById('liquidity-body');
+    lbody.innerHTML = CURRENCIES.map(c => `
+      <tr>
+        <td><span class="currency-badge">${c}</span></td>
+        <td class="editable">
+          <input type="number" data-field="liquidity" data-currency="${c}" value="${liquidity[c] || 0}" step="1" min="0">
+        </td>
+      </tr>
+    `).join('');
+
+    // Bind events
+    abody.querySelectorAll('input').forEach(el => el.addEventListener('input', onAssetInput));
+    rbody.querySelectorAll('input').forEach(el => el.addEventListener('input', onRateInput));
+    lbody.querySelectorAll('input').forEach(el => el.addEventListener('input', onLiquidityInput));
+  }
+
+  function onAssetInput(e) {
+    const { field, idx } = e.target.dataset;
+    const val = e.target.value;
+    if (field === 'split') assets[idx].split = parseFloat(val) || 0;
+    else if (field === 'price') assets[idx].price = parseInt(val) || 0;
+    else if (field === 'holdings') {
+      stocks[assets[idx].ticker] = parseInt(val) || 0;
+      saveState();
+    }
+    calculate();
+  }
+
+  function onRateInput(e) {
+    rates[e.target.dataset.currency] = parseFloat(e.target.value) || 0;
+    calculate();
+  }
+
+  function onLiquidityInput(e) {
+    liquidity[e.target.dataset.currency] = parseInt(e.target.value) || 0;
+    saveState();
+    calculate();
+  }
+
+  // Calculate & render outputs
+  function calculate() {
+    const validation = document.getElementById('validation');
+    const totalSplit = assets.reduce((s, a) => s + a.split, 0);
+
+    if (Math.abs(totalSplit - 100) > 0.001) {
+      validation.textContent = `Split must sum to 100% — currently ${totalSplit.toFixed(1)}%`;
+      validation.classList.add('visible');
+    } else {
+      validation.classList.remove('visible');
+    }
+
+    // Total value in cents
+    let totalValueCents = 0;
+
+    // Add liquidity
+    for (const c of CURRENCIES) {
+      totalValueCents += (liquidity[c] || 0) * (rates[c] || 0);
+    }
+
+    // Add stock values
+    const stockValues = {};
+    for (const a of assets) {
+      const val = (stocks[a.ticker] || 0) * a.price * (rates[a.currency] || 0);
+      stockValues[a.ticker] = val;
+      totalValueCents += val;
+    }
+
+    totalValueCents = Math.floor(totalValueCents);
+
+    // Total
+    document.getElementById('total-value').textContent = fmt(totalValueCents);
+
+    // Target values
+    const targetValues = {};
+    const tbody = document.getElementById('target-body');
+    tbody.innerHTML = assets.map(a => {
+      const target = totalValueCents * (a.split / 100);
+      targetValues[a.ticker] = target;
+      return `<tr><td><span class="ticker">${a.ticker}</span></td><td class="mono">${fmt(target)}</td></tr>`;
+    }).join('');
+
+    // Stock values
+    document.getElementById('stock-values-body').innerHTML = assets.map(a =>
+      `<tr><td><span class="ticker">${a.ticker}</span></td><td class="mono">${fmt(stockValues[a.ticker])}</td></tr>`
+    ).join('');
+
+    // Liquidity values
+    document.getElementById('liquidity-values-body').innerHTML = CURRENCIES.map(c => {
+      const val = (liquidity[c] || 0) * (rates[c] || 0);
+      return `<tr><td><span class="currency-badge">${c}</span></td><td class="mono">${fmt(val)}</td></tr>`;
+    }).join('');
+
+    // % of total
+    const stockPortfolioValue = Object.values(stockValues).reduce((s, v) => s + v, 0);
+
+    document.getElementById('pct-total-body').innerHTML = assets.map(a => {
+      const pct = totalValueCents > 0 ? (stockValues[a.ticker] / totalValueCents) * 100 : 0;
+      return `<tr>
+        <td><span class="ticker">${a.ticker}</span></td>
+        <td class="pct-cell">
+          <div class="pct-bar" style="width: ${Math.min(pct, 100)}%"></div>
+          <span class="pct-text mono">${fmtPct(pct)}</span>
+        </td>
+      </tr>`;
+    }).join('');
+
+    // % of stock portfolio
+    document.getElementById('pct-stock-body').innerHTML = assets.map(a => {
+      const pct = stockPortfolioValue > 0 ? (stockValues[a.ticker] / stockPortfolioValue) * 100 : 0;
+      return `<tr>
+        <td><span class="ticker">${a.ticker}</span></td>
+        <td class="pct-cell">
+          <div class="pct-bar" style="width: ${Math.min(pct, 100)}%"></div>
+          <span class="pct-text mono">${fmtPct(pct)}</span>
+        </td>
+      </tr>`;
+    }).join('');
+
+    // Advice
+    const adviceCard = document.getElementById('advice-card');
+    adviceCard.innerHTML = assets.map(a => {
+      const current = stockValues[a.ticker];
+      const target = targetValues[a.ticker];
+      const diff = target - current;
+      const priceUsd = a.price * (rates[a.currency] || 0);
+      const shares = priceUsd > 0 ? diff / priceUsd : 0;
+
+      if (Math.abs(diff) < 1) {
+        return `<div class="advice-row">
+          <span class="ticker">${a.ticker}</span>
+          <span class="advice-action balanced">Balanced</span>
+          <span class="advice-detail">No action needed</span>
+        </div>`;
+      } else if (diff > 0) {
+        return `<div class="advice-row">
+          <span class="ticker">${a.ticker}</span>
+          <span class="advice-action buy">Buy</span>
+          <span class="advice-detail"><strong>${shares.toFixed(2)}</strong> shares for <strong>$${fmt(diff)}</strong></span>
+        </div>`;
+      } else {
+        return `<div class="advice-row">
+          <span class="ticker">${a.ticker}</span>
+          <span class="advice-action sell">Sell</span>
+          <span class="advice-detail"><strong>${(-shares).toFixed(2)}</strong> shares for <strong>$${fmt(-diff)}</strong></span>
+        </div>`;
+      }
+    }).join('');
+  }
+
+  // Init
+  loadState();
+  renderInputs();
+  calculate();
+</script>
+
+</body>
+</html>
